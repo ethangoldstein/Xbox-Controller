@@ -25,9 +25,7 @@ namespace Xbox_Controller
         public void moveRelative(XInputController.Joystick joystick)
         {
             float x = joystick.value.X - joystick.offset.X;
-            float y = joystick.value.Y - joystick.offset.Y;
-
-           
+            float y = joystick.value.Y - joystick.offset.Y;           
 
             if (x > 0)
             {

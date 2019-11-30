@@ -6,80 +6,92 @@ using System.Threading.Tasks;
 using WindowsInput;
 using System.Timers;
 using System.Drawing;
+using System.Threading;
 
 namespace Xbox_Controller
 {
-    class CAD
+    class CADScrolling
     {
-        double a = 0.8;
-        double b = 0.2;
+        public WindowsInput.Native.VirtualKeyCode key;
+        private Scroll vertical = new Scroll();
+        private Scroll horizontal = new Scroll();
+        private InputSimulator simulator = new InputSimulator();
 
-        float max_interval = 100;
-        float min_interval = 1000;
-        PointF interval;
-        Point direction = new Point();
-        
-        public System.Timers.Timer timer = new System.Timers.Timer();
-        public UInt32 intervalInitial = 350;
-        public UInt32 intervalFinal = 100;
-
-        InputSimulator simulator = new InputSimulator();
-
-        public void panCAD(XInputController.Joystick joystick)
+        public void execute(XInputController.Joystick joystick)
         {
-            double y = (double)joystick.value.Y;
-            double x = (double)joystick.value.X;
-
-            interval.X = (float)(max_interval * (a * Math.Abs(x) + b * Math.Pow(Math.Abs(y), 2)));
-            interval.Y = (float)(max_interval * (a * Math.Abs(y) + b * Math.Pow(Math.Abs(y), 2)));
-
-            if (interval.X < min_interval)
+            if (Math.Abs(joystick.value.Y) > Math.Abs(joystick.value.X))
             {
-                interval.X = min_interval;
+                simulator.Keyboard.KeyUp(key);
+                vertical.execute(joystick.value.Y);
+                horizontal.StopTimer();
             }
-            else if (interval.X > max_interval)
+            else if (Math.Abs(joystick.value.Y) < Math.Abs(joystick.value.X))
             {
-                interval.X = max_interval;
+                simulator.Keyboard.KeyDown(key);
+                horizontal.execute(joystick.value.X*-1);   
+                vertical.StopTimer();
             }
-
-            if (timer.Enabled)
+            else
             {
-                if (x > 0)
-                {
-                    direction.X = 1;
-                    timer.Interval = interval.X;
-                }
-                else if (x < 0)
-                {
-                    direction.X = -1;
-                    timer.Interval = interval.X;
-                }
-                else
-                {
-                    timer.Enabled = false;
-                }
+                simulator.Keyboard.KeyUp(key);
+                vertical.StopTimer();
+                horizontal.StopTimer();
             }
-            else 
-            {
-                if (x > 0)
-                {
-                    direction.X = 1;
-                    SetTimer((uint)interval.X);
-                    timer.Enabled = true;
-                }
-                else if (x < 0)
-                {
-                    direction.X = -1;
-                    SetTimer((uint)interval.X);
-                    timer.Enabled = true;
-                }
-            }
-
         }
-        public void SetTimer(uint interval)
+    }
+
+
+    class Scroll
+    {
+        public System.Timers.Timer timer = new System.Timers.Timer();
+        public InputSimulator simulator = new InputSimulator();
+        public int direction;
+        public int intervalSlowest = 350;
+        public int intervalFastest = 50;
+        public int intervalCurrent;
+        public float value;
+
+        public void execute(float value)
+        {
+            this.value = value;
+            if (!timer.Enabled)
+            {
+                if (value != 0)
+                {
+                    if (value > 0)
+                    {
+                        direction = 1;
+                        simulator.Mouse.VerticalScroll(direction);
+                    }
+                    else if (value < 0)
+                    {
+                        direction = -1;
+                        simulator.Mouse.VerticalScroll(direction);
+                    }
+
+                    SetTimer();
+                }
+            }
+            else
+            {
+                if (value == 0)
+                {
+                    StopTimer();
+                }
+                else if (value < 0 & direction > 0)
+                {
+                    StopTimer();
+                }
+                else if (value > 0 & direction < 0)
+                {
+                    StopTimer();
+                }
+            }
+        }
+        private void SetTimer()
         {
             // Create a timer with a two second interval.
-            timer = new System.Timers.Timer(interval);
+            timer = new System.Timers.Timer(intervalSlowest);
             // Hook up the Elapsed event for the timer. 
             timer.Elapsed += OnTimedEvent;
             timer.AutoReset = true;
@@ -94,9 +106,19 @@ namespace Xbox_Controller
 
         private void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
-            simulator.Mouse.VerticalScroll(direction.X);
+            intervalCurrent = (int)(Math.Abs(1 - Math.Abs(value)) * intervalSlowest);
+
+            if (intervalCurrent < intervalFastest)
+            {
+                intervalCurrent = intervalFastest;
+
+            }
+            timer.Interval = intervalCurrent;
+            simulator.Mouse.VerticalScroll(direction);
         }
     }
-
-
 }
+
+
+
+
