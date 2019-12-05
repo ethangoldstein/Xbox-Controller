@@ -18,58 +18,6 @@ namespace Xbox_Controller
         private Gamepad state;
         private bool connected = false;
 
-        public class Button
-        {
-           //public const int length = 5;
-            public string id { get; set; }
-            public bool valueCurrent;
-            public bool valuePast;
-
-            [Flags]
-            public enum State : short
-            {
-                Pressed = 0,
-                Down = 1,
-                Released = 2,
-                Up = 4
-            };
-            public State state = State.Released;
-
-            public GamepadButtonFlags gamepad;
-
-            //GUI
-            public Point origin = new Point(300, 0);
-            public Label label = new Label();
-            public Label text = new Label();
-        }
-
-        public class Joystick
-        {
-            public string id { get; set; }
-            public float deadband { get; set; }
-            public PointF offset;
-            public float max { get; } = Int16.MaxValue;
-            public float min { get; } = Int16.MinValue;
-            public PointF value { get; set; } = new PointF(0, 0);
-
-            public Point origin = new Point(0, 0);
-            public Label label = new Label();
-            public Label text = new Label();
-        }
-        
-        public class Trigger
-        {
-            public float max { get; } = byte.MaxValue;
-            public float min { get; } = byte.MinValue;
-            public float value { get; set; }
-
-            public string id { get; set; }
-
-            public Point origin = new Point(0, 100);
-            public Label label = new Label();
-            public Label text = new Label();
-        }
-
         private T[] InitializeArray<T>(int length) where T : new()
         {
             T[] array = new T[length];
@@ -191,8 +139,8 @@ namespace Xbox_Controller
             joystick[0].value = new PointF(state.LeftThumbX/joystick[0].max, state.LeftThumbY/joystick[0].max);
             joystick[1].value = new PointF(state.RightThumbX/joystick[1].max, state.RightThumbY/joystick[1].max);
 
-            joystick[0].value = process(joystick[0]);
-            joystick[1].value = process(joystick[1]);
+            joystick[0].update();
+            joystick[1].update();
 
             trigger[0].value = ((float)state.LeftTrigger)/trigger[0].max;
             trigger[1].value = ((float)state.RightTrigger) / trigger[1].max;
@@ -201,68 +149,11 @@ namespace Xbox_Controller
             {
                 button[i].valuePast = button[i].valueCurrent;
                 button[i].valueCurrent = state.Buttons.HasFlag(button[i].gamepad);
-                button[i].state = process(button[i]);
+                button[i].update();
             }
         }
 
-        private Button.State process(Button obj)
-        {
-            if (!(obj.valuePast & obj.valueCurrent))
-            {
-                obj.state = Button.State.Up;
-            }
-            else if (obj.valuePast & obj.valueCurrent)
-            {
-                obj.state = Button.State.Down;
-            }
-            else if ((!obj.valuePast) & obj.valueCurrent)
-            {
-                obj.state = Button.State.Pressed;
-            }
-            else if (obj.valuePast & (!obj.valueCurrent)) 
-            {
-                obj.state = Button.State.Released;
-            }
-
-            return obj.state;
-        }
-
-        private PointF process(Joystick obj)
-        {
-            if (Math.Abs(obj.value.X) < obj.deadband)
-            {
-                obj.value = new PointF(0, obj.value.Y);
-            }
-            else
-            {
-                if (obj.value.X < 0)
-                {
-                    obj.value = new PointF((obj.value.X + obj.deadband), obj.value.Y);
-                }
-                else if (obj.value.X > 0)
-                {
-                    obj.value = new PointF((obj.value.X - obj.deadband), obj.value.Y);
-                }
-            }
-
-            if (Math.Abs(obj.value.Y) < obj.deadband)
-            {
-                obj.value = new PointF(obj.value.X, 0);
-            }
-            else
-            {
-                if (obj.value.Y < 0)
-                {
-                    obj.value = new PointF(obj.value.X, (obj.value.Y + obj.deadband));
-                }
-                else if (obj.value.Y > 0)
-                {
-                    obj.value = new PointF(obj.value.X, (obj.value.Y - obj.deadband));
-                }
-            }
-
-            return new PointF (obj.value.X, obj.value.Y);
-        }
+        
 
     }
 

@@ -5,6 +5,52 @@ using SharpDX.XInput;
 
 namespace Xbox_Controller
 {
+    public class KeyRepeat
+    {
+        private Timer timer = new Timer();
+        public UInt32 intervalInitial = 350;
+        public UInt32 intervalFinal = 50;
+
+        private InputSimulator simulator = new InputSimulator();
+        public WindowsInput.Native.VirtualKeyCode key { set; get; }
+
+        public void execute(ref Button button)
+        {
+            if (button.state == Button.State.Pressed)
+            {
+                simulator.Keyboard.KeyPress(key);
+                SetTimer();
+            }
+            else if (button.state == Button.State.Released)
+            {
+                StopTimer();
+            }
+        }
+               
+        //private function;
+        private void SetTimer()
+        {
+            // Create a timer with a two second interval.
+            timer = new Timer(intervalInitial);
+            // Hook up the Elapsed event for the timer. 
+            timer.Elapsed += OnTimedEvent;
+            timer.AutoReset = true;
+            timer.Enabled = true;
+        }
+
+        public void StopTimer()
+        {
+            timer.Stop();
+            timer.Dispose();
+        }
+
+        private void OnTimedEvent(Object source, ElapsedEventArgs e)
+        {
+            timer.Interval = intervalFinal;
+            simulator.Keyboard.KeyPress(key);
+        }
+    }
+
     public class Keyboard
     {
         private Timer timer = new Timer();
@@ -13,7 +59,8 @@ namespace Xbox_Controller
 
         private InputSimulator simulator = new InputSimulator();
         public WindowsInput.Native.VirtualKeyCode key { set;  get; }
-        public void keySingle(XInputController.Button button)
+
+        public void keySingle(Button button)
         {
             if ((button.valuePast == false) & button.valueCurrent)
             {
@@ -21,7 +68,7 @@ namespace Xbox_Controller
             }
         }
         
-        public void keyRepeat(XInputController.Button button)
+        public void keyRepeat(Button button)
         {
             if ((button.valuePast == false) & button.valueCurrent)
             {
@@ -34,7 +81,7 @@ namespace Xbox_Controller
             }
         }
 
-        public void keyToggle(XInputController.Button button)
+        public void keyToggle(Button button)
         {
             if ((button.valuePast == false) & button.valueCurrent)
             {

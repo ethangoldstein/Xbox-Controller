@@ -10,6 +10,8 @@ using System.Windows.Forms;
 using System.Timers;
 using WindowsInput;
 using WindowsInput.Native;
+using System.IO;
+using System.Runtime.Serialization;
 
 namespace Xbox_Controller
 {
@@ -17,23 +19,25 @@ namespace Xbox_Controller
     {
         static private XInputController controller = new XInputController();
         private System.Timers.Timer timer = new System.Timers.Timer();
-        private Mouse[] mouse;
-        private Keyboard[] keyboard;
-        private CADScrolling[] scroll;
-        private InputSimulator simulator = new InputSimulator();
+        private MovePointer pointer = new MovePointer();
+        private Scroll verticalScroll = new Scroll();
+        private Click click = new Click();
+        private KeyRepeat[] arrowPad;
 
         private delegate void SetTextCallback(TextBox textBox, string text);
         private delegate void SetLabelCallback(Label label, string text);
 
-        uint counter = 0;
         public Form1()
         {
             InitializeComponent();
             initializeGUI();
-            mouse = InitializeArray<Mouse>(10);
-            keyboard = InitializeArray<Keyboard>(10);
-            scroll = InitializeArray<CADScrolling>(1);
-            scroll[0].key = VirtualKeyCode.LSHIFT;
+
+            arrowPad = InitializeArray<KeyRepeat>(4);
+            arrowPad[0].key = VirtualKeyCode.UP;
+            arrowPad[1].key = VirtualKeyCode.DOWN;
+            arrowPad[2].key = VirtualKeyCode.LEFT;
+            arrowPad[3].key = VirtualKeyCode.RIGHT;
+
 
             SetTimer();
         }
@@ -50,56 +54,61 @@ namespace Xbox_Controller
         private void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
             controller.Update();
-            mouse[0].moveRelative(controller.joystick[0]);
-            scroll[0].execute(controller.joystick[1]);
+            pointer.execute(ref controller.joystick[0]);
+            verticalScroll.execute(ref controller.joystick[1]);
+            click.execute(ref controller.button[0]);
 
-          /*  output[1].buttonScroll(controller.button[0], "down");            
-            output[2].buttonScroll(controller.button[2], "up");
-            output[3].buttonKeyScroll(controller.button[1], "up" , VirtualKeyCode.SHIFT);
-            output[4].buttonKeyScroll(controller.button[3], "down", VirtualKeyCode.SHIFT);
-            output[5].mousePress(simulator.Mouse.LeftButtonClick);*/
-
-            keyboard[0].key = VirtualKeyCode.ESCAPE;
-            keyboard[0].keySingle(controller.button[0]);
-
-            //keyboard[1].key = VirtualKeyCode.CONTROL;
-            //keyboard[1].keyToggle(controller.button[1]);
-            updateGUI();
+            arrowPad[0].execute(ref controller.button[11]);
+            arrowPad[1].execute(ref controller.button[10]);
+            arrowPad[2].execute(ref controller.button[12]);
+            arrowPad[3].execute(ref controller.button[13]);
+            //updateGUI();
         }
 
         private void updateGUI()
         {
-            foreach (XInputController.Button obj in controller.button)
+            for ( int i = 0; i < controller.button.Length; i++)
             {
-                SetLabel(obj.text, obj.valueCurrent.ToString());
+                if ( controller.button[i].valueCurrent != controller.button[i].valuePast)
+                {
+                    SetLabel(controller.button[i].text, controller.button[i].valueCurrent.ToString());
+                }
+                
             }
 
-            foreach (XInputController.Joystick obj in controller.joystick)
+            for (int i = 0; i < controller.joystick.Length; i++)
             {
-                SetLabel(obj.text, obj.value.ToString());
+                if (!controller.joystick[i].value.ToString().Equals(controller.joystick[i].text.Text))
+                {
+                    SetLabel(controller.joystick[i].text, controller.joystick[i].value.ToString());
+                }
+
             }
 
-            foreach (XInputController.Trigger obj in controller.trigger)
+            for (int i = 0; i < controller.trigger.Length; i++)
             {
-                SetLabel(obj.text, obj.value.ToString());
+                if (!controller.trigger[i].value.ToString().Equals(controller.trigger[i].text.Text))
+                {
+                    SetLabel(controller.trigger[i].text, controller.trigger[i].value.ToString());
+                }                
             }
         }
 
         private void initializeGUI()
         {
-            foreach (XInputController.Button obj in controller.button)
+            foreach (Button obj in controller.button)
             {
                 this.Controls.Add(obj.label);
                 this.Controls.Add(obj.text);
             }
 
-            foreach (XInputController.Joystick obj in controller.joystick)
+            foreach (Joystick obj in controller.joystick)
             {
                 this.Controls.Add(obj.label);
                 this.Controls.Add(obj.text);
             }
 
-            foreach (XInputController.Trigger obj in controller.trigger)
+            foreach (Trigger obj in controller.trigger)
             {
                 this.Controls.Add(obj.label);
                 this.Controls.Add(obj.text);

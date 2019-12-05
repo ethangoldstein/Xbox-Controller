@@ -7,41 +7,71 @@ using WindowsInput;
 using System.Timers;
 using System.Drawing;
 using System.Threading;
+using System.Runtime.Serialization;
 
 namespace Xbox_Controller
 {
-    class CADScrolling
+    [Serializable()]
+    public class MovePointer : ISerializable
     {
-        public WindowsInput.Native.VirtualKeyCode key;
-        private Scroll vertical = new Scroll();
-        private Scroll horizontal = new Scroll();
-        private InputSimulator simulator = new InputSimulator();
+        public float speed = 10;
+        public float acceleration = 6;
+        InputSimulator simulator = new InputSimulator();
 
-        public void execute(XInputController.Joystick joystick)
+        public void execute(ref Joystick joystick)
         {
-            if (Math.Abs(joystick.value.Y) > Math.Abs(joystick.value.X))
+            float x = joystick.value.X - joystick.offset.X;
+            float y = joystick.value.Y - joystick.offset.Y;
+
+            if (x > 0)
             {
-                simulator.Keyboard.KeyUp(key);
-                vertical.execute(joystick.value.Y);
-                horizontal.StopTimer();
-            }
-            else if (Math.Abs(joystick.value.Y) < Math.Abs(joystick.value.X))
-            {
-                simulator.Keyboard.KeyDown(key);
-                horizontal.execute(joystick.value.X*-1);   
-                vertical.StopTimer();
+                x = (x * speed) + (acceleration * (float)Math.Pow(x, 2));
             }
             else
             {
-                simulator.Keyboard.KeyUp(key);
-                vertical.StopTimer();
-                horizontal.StopTimer();
+                x = (x * speed) + (-1 * acceleration * (float)Math.Pow(x, 2));
             }
+
+            if (y > 0)
+            {
+                y = (y * speed) + (acceleration * (float)Math.Pow(y, 2));
+            }
+            else
+            {
+                y = (y * speed) + (-1 * acceleration * (float)Math.Pow(y, 2));
+            }
+
+            simulator.Mouse.MoveMouseBy((int)(x), (int)(-1 * y));
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("acceleration", acceleration);
+            info.AddValue("speed", speed);
+        }
+
+        public void LoadObjectData(SerializationInfo info, StreamingContext context)
+        {
+            acceleration = (float)info.GetValue("cadScrolling", typeof(float));
+            speed = (float)info.GetValue("verticalScroll", typeof(float));
         }
     }
 
+    public class Click
+    {
+        public InputSimulator simulator = new InputSimulator();
 
-    class Scroll
+        public void execute(ref Button button)
+        {
+            if (button.state == Button.State.Pressed)
+            {
+                simulator.Mouse.LeftButtonClick();
+            }
+            
+        }        
+    }
+
+    public class Scroll
     {
         public System.Timers.Timer timer = new System.Timers.Timer();
         public InputSimulator simulator = new InputSimulator();
@@ -51,9 +81,31 @@ namespace Xbox_Controller
         public int intervalCurrent;
         public float value;
 
-        public void execute(float value)
+        [Flags]
+        public enum Axis : short 
+        { 
+            X = 0,
+            Y = 1,
+            Both = 2
+        }
+
+        public Axis axis = Axis.Y;
+
+        public void execute(ref Joystick joystick)
         {
-            this.value = value;
+            if (axis == Axis.Y)
+            {
+                this.value = joystick.value.Y;
+            }
+            else if (axis == Axis.X)
+            {
+                this.value = joystick.value.X;
+            }
+            else if (axis == Axis.Both)
+            {
+                throw new Exception("Cannot initialize both axes for this class.");
+            }
+
             if (!timer.Enabled)
             {
                 if (value != 0)
